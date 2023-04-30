@@ -4,7 +4,10 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Scanner;
+import java.util.Set;
 
 /**
  * Created on April, 2023
@@ -98,21 +101,30 @@ public class FileUtils {
     /**
      * Read stored-tickets file and return all ticket keys
      */
-    public static String[] getTicketKeys() {
-        String[] ticketKeys = new String[0];
+    public static Set<String> getTicketKeys() {
+        final Set<String> ticketKeysSet = new HashSet<>();
 
         try {
-            File myObj = new File(STORED_TICKETS_PATH.toString());
-            Scanner myReader = new Scanner(myObj);
-            while (myReader.hasNextLine()) {
+            final File myObj = new File(STORED_TICKETS_PATH.toString());
+            final Scanner myReader = new Scanner(myObj);
+            while (myReader.hasNext()) {
                 String data = myReader.nextLine();
-                ticketKeys = data.split(SEPARATOR);
+                Collections.addAll(ticketKeysSet, data.split(SEPARATOR));
             }
+
             myReader.close();
         } catch (FileNotFoundException e) {
             Logger.error("An error occurred while reading stored-tickets.txt file.");
             e.printStackTrace();
         }
-        return ticketKeys;
+        return ticketKeysSet;
+    }
+
+    public static void deleteFile() {
+        try {
+            Files.deleteIfExists(STORED_TICKETS_PATH);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

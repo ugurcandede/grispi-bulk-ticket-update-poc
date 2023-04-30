@@ -1,3 +1,5 @@
+.idea/sonarlint/
+
 target/
 pom.xml.tag
 pom.xml.releaseBackup
