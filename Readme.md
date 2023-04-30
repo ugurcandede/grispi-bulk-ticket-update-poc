@@ -18,10 +18,9 @@ TENANT_ID=xxx
 API_URL=xxx
 ACCESS_TOKEN=xxx
 
-# Thread Sleep
-SLEEP_INDEX=5
-SLEEP_TIME=2000
-
 # Others
-SEPARATOR=", "
+SEPARATOR=,
+SLEEP_DURATION=2000
+SLEEP_ENABLED=true
+REQUEST_BODY={\"channel\":\"INTEGRATION\",\"fields\":[{\"key\":\"ts.status\",\"value\":\"4\"}]}
   ```

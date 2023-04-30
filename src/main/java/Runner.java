@@ -1,5 +1,12 @@
 import org.tinylog.Logger;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 /**
  * Created on April, 2023
  *
@@ -8,19 +15,18 @@ import org.tinylog.Logger;
 public class Runner {
 
     private static final PropertyAccessor properties = PropertyAccessor.getInstance();
-    private static final Long SLEEP_INDEX = Long.parseLong(properties.getProperty("SLEEP_INDEX"));
-    private static final Long SLEEP_TIME = Long.parseLong(properties.getProperty("SLEEP_TIME"));
+    private static final String REQUEST_BODY = properties.getProperty("REQUEST_BODY");
+    private static final Long SLEEP_DURATION = Long.parseLong(properties.getProperty("SLEEP_DURATION"));
+    private static final boolean SLEEP_ENABLED = Boolean.parseBoolean(properties.getProperty("SLEEP_ENABLED"));
 
-    private static final String FILTER_ID = "1";
     private static final String PAGE_SIZE = "50";
-    private static final String REQUEST_BODY = "{\"channel\":\"INTEGRATION\",\"fields\":[{\"key\":\"ts.status\",\"value\":\"4\"}]}";
 
     public void run() {
         try {
-            getAllTicketKeys();
+            // add filter ids to list
+            List.of("xxxx").parallelStream().forEach(this::getAllTicketKeys);
             solveTickets();
         } catch (Exception e) {
-            Logger.error(e);
             e.printStackTrace();
         }
     }
@@ -28,66 +34,79 @@ public class Runner {
     /**
      * Get all ticket keys from api and store them in a file
      */
-    private void getAllTicketKeys() {
+    private void getAllTicketKeys(String filterId) {
         // get all ticket keys
         int pageIndex = 0;
         boolean hasNextPage = true;
 
         while (hasNextPage) {
+            final KeysDto keysDto;
+
             try {
-                final KeysDto keysDto = HttpRequestUtils.getTicketsRequest(FILTER_ID, PAGE_SIZE, pageIndex);
-                assert keysDto != null;
-                final String keys = keysDto.keys();
-                hasNextPage = keysDto.hasNextPage();
-
-                // store ticket keys
-                FileUtils.storeTicketKeys(keys);
-
-                // sleep thread
-                if (pageIndex % SLEEP_INDEX == 0) {
-                    Logger.info("[FETCH] Thread is sleeping for {} ms", SLEEP_TIME);
-                    Thread.sleep(SLEEP_TIME);
-                }
-
-                Logger.info("[FETCH] Page index: {}", pageIndex);
-
-                pageIndex++;
-
-            } catch (Exception e) {
+                keysDto = HttpRequestUtils.getTicketsRequest(filterId, PAGE_SIZE, pageIndex);
+            } catch (URISyntaxException e) {
                 throw new RuntimeException(e);
             }
+
+            assert keysDto != null;
+            final String keys = keysDto.keys();
+            hasNextPage = keysDto.hasNextPage();
+
+            // store ticket keys
+            try {
+                FileUtils.storeTicketKeys(keys);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            Logger.info("[FETCH] Page index: {} and filterId is '{}'", pageIndex, filterId);
+            pageIndex++;
         }
-        Logger.info("[INFO] Tickets are fetched");
+        Logger.info("[INFO] Tickets are fetched for filterId: '{}'", filterId);
     }
 
     /**
      * Solve tickets from stored file with given request body
      */
     private void solveTickets() {
-        int index = 0;
-        final String[] ticketKeys = FileUtils.getTicketKeys();
+        // get all ticket keys from stored file
+        List<String> ticketKeys = Collections.synchronizedList(new ArrayList<>(FileUtils.getTicketKeys()));
+        Logger.info("[INFO] Total ticket size: {}", ticketKeys.size());
 
-        for (String ticketKey : ticketKeys) {
-            try {
-                if (ticketKey.isBlank()) {
-                    Logger.info("There is no ticket found");
-                    continue;
-                }
-                HttpRequestUtils.sendTicketRequest(ticketKey, REQUEST_BODY);
+        // delete stored tickets file
+        FileUtils.deleteFile();
 
-                // sleep thread
-                if (index % SLEEP_INDEX == 0) {
-                    Logger.info("[SOLVE] Thread is sleeping for {} ms", SLEEP_TIME);
-                    Thread.sleep(SLEEP_TIME);
-                }
-
-                Logger.info("[SOLVE] Solved ticket wih key: {}", ticketKey);
-
-                index++;
-            } catch (Exception e) {
-                Logger.warn(e);
-            }
+        // divide ticket keys into blocks
+        List<List<String>> blocks = new ArrayList<>();
+        int blockSize = 20;
+        for (int i = 0; i < ticketKeys.size(); i += blockSize) {
+            int end = Math.min(ticketKeys.size(), i + blockSize);
+            blocks.add(ticketKeys.subList(i, end));
         }
+
+        // each block is solved in parallel
+        blocks.stream().parallel().forEach(block -> {
+            final CopyOnWriteArrayList<String> writeArrayList = new CopyOnWriteArrayList<>(block);
+
+            // solve each ticket in block
+            writeArrayList.forEach(ticketKey -> {
+                try {
+                    if (ticketKey.isBlank()) {
+                        Logger.info("There is no ticket found");
+                        return;
+                    }
+
+                    if (SLEEP_ENABLED) Thread.sleep(SLEEP_DURATION);
+
+                    HttpRequestUtils.sendTicketRequest(ticketKey, REQUEST_BODY);
+                    writeArrayList.remove(ticketKey);
+
+                    Logger.info("[SOLVE] Solved ticket wih key: {}", ticketKey);
+                } catch (Exception e) {
+                    Logger.warn(e);
+                }
+            });
+        });
         Logger.info("[INFO] All tickets are solved");
     }
 }

@@ -99,7 +99,7 @@ public class HttpRequestUtils {
                 Logger.error("Error: {} {} key is {}", response.statusCode(), response.body(), ticketKey);
             }
 
-            FileUtils.removeSuccessTickets(ticketKey);
+//            FileUtils.removeSuccessTickets(ticketKey);
 
         } catch (IOException | InterruptedException e) {
             Logger.error("Error: {} {} key is {}", e.getMessage(), e, ticketKey);
