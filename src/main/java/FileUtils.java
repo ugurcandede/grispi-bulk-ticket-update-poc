@@ -4,6 +4,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.LocalDate;
 import java.util.*;
 
 /**
@@ -15,6 +16,9 @@ public class FileUtils {
 
     private static final PropertyAccessor properties = PropertyAccessor.getInstance();
     private static final String SEPARATOR = properties.getProperty("SEPARATOR");
+    private static final String STORED_TICKETS_FILE_NAME = properties.getProperty("STORED_TICKETS_FILE_NAME");
+    private static final String STORED_TICKETS_COUNT_FILE_NAME = properties.getProperty("STORED_TICKETS_COUNT_FILE_NAME");
+
     private static Path STORED_TICKETS_PATH;
     private static Path STORED_TICKET_COUNTS_PATH;
 
@@ -40,13 +44,13 @@ public class FileUtils {
             }
 
             // create stored-tickets file in files directory if not exists
-            final Path storedTicketsFilePath = Path.of(directory, "files", "stored-tickets.txt");
+            final Path storedTicketsFilePath = Path.of(directory, "files", STORED_TICKETS_FILE_NAME);
             if (Files.notExists(storedTicketsFilePath)) {
                 Files.createFile(storedTicketsFilePath);
             }
 
             // create stored-ticket-counts file in files directory if not exists
-            final Path storedTicketCountsFilePath = Path.of(directory, "files", "stored-ticket-counts.txt");
+            final Path storedTicketCountsFilePath = Path.of(directory, "files", STORED_TICKETS_COUNT_FILE_NAME.formatted(LocalDate.now()));
             if (Files.notExists(storedTicketCountsFilePath)) {
                 Files.createFile(storedTicketCountsFilePath);
             }
