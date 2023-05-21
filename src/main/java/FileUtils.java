@@ -4,10 +4,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created on April, 2023
@@ -19,6 +16,7 @@ public class FileUtils {
     private static final PropertyAccessor properties = PropertyAccessor.getInstance();
     private static final String SEPARATOR = properties.getProperty("SEPARATOR");
     private static Path STORED_TICKETS_PATH;
+    private static Path STORED_TICKET_COUNTS_PATH;
 
     static {
         prepareFiles();
@@ -42,11 +40,19 @@ public class FileUtils {
             }
 
             // create stored-tickets file in files directory if not exists
-            Path filePath = Path.of(directory, "files", "stored-tickets.txt");
-            if (Files.notExists(filePath)) {
-                Files.createFile(filePath);
+            final Path storedTicketsFilePath = Path.of(directory, "files", "stored-tickets.txt");
+            if (Files.notExists(storedTicketsFilePath)) {
+                Files.createFile(storedTicketsFilePath);
             }
-            STORED_TICKETS_PATH = filePath;
+
+            // create stored-ticket-counts file in files directory if not exists
+            final Path storedTicketCountsFilePath = Path.of(directory, "files", "stored-ticket-counts.txt");
+            if (Files.notExists(storedTicketCountsFilePath)) {
+                Files.createFile(storedTicketCountsFilePath);
+            }
+
+            STORED_TICKET_COUNTS_PATH = storedTicketCountsFilePath;
+            STORED_TICKETS_PATH = storedTicketsFilePath;
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -67,6 +73,20 @@ public class FileUtils {
             Files.write(STORED_TICKETS_PATH, content.getBytes(), StandardOpenOption.APPEND);
         } catch (IOException e) {
             throw new IOException(e);
+        }
+    }
+
+    /**
+     * Store ticket keys to file
+     * @param filterId
+     * @param totalCount
+     */
+    public static void storeTicketsCount(String filterId, int totalCount) {
+
+        try{
+            Files.write(STORED_TICKET_COUNTS_PATH, ("FilterId: " + filterId + " Count: " + totalCount + "\n").getBytes(), StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -120,11 +140,15 @@ public class FileUtils {
         return ticketKeysSet;
     }
 
-    public static void deleteFile() {
+    public static void deleteStoredTicketsFile() {
         try {
             Files.deleteIfExists(STORED_TICKETS_PATH);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static List<String> splitTicketKeys(String ticketKeys) {
+        return Arrays.asList(ticketKeys.split(SEPARATOR));
     }
 }

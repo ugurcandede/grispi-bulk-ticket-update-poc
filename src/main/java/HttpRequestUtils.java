@@ -57,8 +57,7 @@ public class HttpRequestUtils {
                 throw new IOException("Error when ticket fetching");
             }
 
-            final KeysDto parsedTicketKeys = JsonUtils.parseContent(response.body());
-            return parsedTicketKeys;
+            return JsonUtils.parseContent(response.body());
 
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();

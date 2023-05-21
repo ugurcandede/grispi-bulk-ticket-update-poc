@@ -2,10 +2,9 @@ import org.tinylog.Logger;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created on April, 2023
@@ -21,10 +20,11 @@ public class Runner {
 
     private static final String PAGE_SIZE = "50";
 
-    public void run() {
+    public void run(List<String> filterIds) {
         try {
             // add filter ids to list
-            List.of("xxxx").parallelStream().forEach(this::getAllTicketKeys);
+            filterIds.parallelStream().forEach(this::getAllTicketKeys);
+            Thread.sleep(SLEEP_DURATION * 3);
             solveTickets();
         } catch (Exception e) {
             e.printStackTrace();
@@ -38,6 +38,7 @@ public class Runner {
         // get all ticket keys
         int pageIndex = 0;
         boolean hasNextPage = true;
+        final AtomicInteger ticketCounter = new AtomicInteger(0);
 
         while (hasNextPage) {
             final KeysDto keysDto;
@@ -59,9 +60,16 @@ public class Runner {
                 throw new RuntimeException(e);
             }
 
+            // increase ticket count
+            final List<String> ticketKeys = FileUtils.splitTicketKeys(keys);
+            ticketCounter.addAndGet(ticketKeys.size());
+
             Logger.info("[FETCH] Page index: {} and filterId is '{}'", pageIndex, filterId);
             pageIndex++;
         }
+
+        // store ticket count with filterId
+        FileUtils.storeTicketsCount(filterId, ticketCounter.get());
         Logger.info("[INFO] Tickets are fetched for filterId: '{}'", filterId);
     }
 
@@ -74,7 +82,7 @@ public class Runner {
         Logger.info("[INFO] Total ticket size: {}", ticketKeys.size());
 
         // delete stored tickets file
-        FileUtils.deleteFile();
+        FileUtils.deleteStoredTicketsFile();
 
         // divide ticket keys into blocks
         List<List<String>> blocks = new ArrayList<>();
@@ -88,6 +96,14 @@ public class Runner {
         blocks.stream().parallel().forEach(block -> {
             final CopyOnWriteArrayList<String> writeArrayList = new CopyOnWriteArrayList<>(block);
 
+            if (SLEEP_ENABLED) {
+                try {
+                    Thread.sleep(SLEEP_DURATION);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
             // solve each ticket in block
             writeArrayList.forEach(ticketKey -> {
                 try {
@@ -96,12 +112,10 @@ public class Runner {
                         return;
                     }
 
-                    if (SLEEP_ENABLED) Thread.sleep(SLEEP_DURATION);
-
                     HttpRequestUtils.sendTicketRequest(ticketKey, REQUEST_BODY);
                     writeArrayList.remove(ticketKey);
 
-                    Logger.info("[SOLVE] Solved ticket wih key: {}", ticketKey);
+                    Logger.info("[SOLVE] Solved ticket with key: {}", ticketKey);
                 } catch (Exception e) {
                     Logger.warn(e);
                 }
