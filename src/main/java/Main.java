@@ -29,8 +29,8 @@ public class Main {
             Logger.warn("Application interrupted");
         } catch (Exception e) {
             Logger.error(e);
-        } finally {
-            Logger.info("Application finished");
         }
+
+        Logger.info("Application finished");
     }
 }
