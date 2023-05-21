@@ -1,4 +1,4 @@
-.idea/sonarlint/
+.idea/sonarlint/**
 
 target/
 pom.xml.tag
@@ -43,3 +43,5 @@ replay_pid*
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
+
+/files/**
