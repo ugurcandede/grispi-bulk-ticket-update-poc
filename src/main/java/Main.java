@@ -16,8 +16,14 @@ public class Main {
         System.out.flush();
 
         Logger.info("Application started\n");
+
+        // Login stuff
+        Login.login();
+
+        // Runner stuff
         try (final Scanner scanner = new Scanner(System.in)) {
-            Logger.info("\nEnter filter ids:");
+            System.out.flush();
+            Logger.info("Enter filter ids:");
 
             final String line = scanner.nextLine();
             final List<String> filterIds = FileUtils.splitTicketKeys(line);

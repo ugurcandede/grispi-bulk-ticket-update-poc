@@ -15,9 +15,6 @@ import java.util.*;
 public class FileUtils {
 
     private static final PropertyAccessor properties = PropertyAccessor.getInstance();
-    private static final String SEPARATOR = properties.getProperty("SEPARATOR");
-    private static final String STORED_TICKETS_FILE_NAME = properties.getProperty("STORED_TICKETS_FILE_NAME");
-    private static final String STORED_TICKETS_COUNT_FILE_NAME = properties.getProperty("STORED_TICKETS_COUNT_FILE_NAME");
 
     private static Path STORED_TICKETS_PATH;
     private static Path STORED_TICKET_COUNTS_PATH;
@@ -35,6 +32,8 @@ public class FileUtils {
      */
     private static void prepareFiles() {
         final String directory = System.getProperty("user.dir");
+        final String STORED_TICKETS_FILE_NAME = properties.getProperty(PropertyEnums.STORED_TICKETS_FILE_NAME.getValue());
+        final String STORED_TICKETS_COUNT_FILE_NAME = properties.getProperty(PropertyEnums.STORED_TICKETS_COUNT_FILE_NAME.getValue());
 
         try {
             // create files directory if not exists
@@ -82,12 +81,13 @@ public class FileUtils {
 
     /**
      * Store ticket keys to file
+     *
      * @param filterId
      * @param totalCount
      */
     public static void storeTicketsCount(String filterId, int totalCount) {
 
-        try{
+        try {
             Files.write(STORED_TICKET_COUNTS_PATH, ("FilterId: " + filterId + " Count: " + totalCount + "\n").getBytes(), StandardOpenOption.APPEND);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -126,6 +126,7 @@ public class FileUtils {
      * Read stored-tickets file and return all ticket keys
      */
     public static Set<String> getTicketKeys() {
+        final String SEPARATOR = properties.getProperty(PropertyEnums.SEPARATOR.getValue());
         final Set<String> ticketKeysSet = new HashSet<>();
 
         try {
@@ -153,6 +154,7 @@ public class FileUtils {
     }
 
     public static List<String> splitTicketKeys(String ticketKeys) {
+        final String SEPARATOR = properties.getProperty(PropertyEnums.SEPARATOR.getValue());
         return Arrays.asList(ticketKeys.split(SEPARATOR));
     }
 }

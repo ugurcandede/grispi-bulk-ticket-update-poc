@@ -2,7 +2,9 @@ import org.tinylog.Logger;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -14,19 +16,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Runner {
 
     private static final PropertyAccessor properties = PropertyAccessor.getInstance();
-    private static final String REQUEST_BODY = properties.getProperty("REQUEST_BODY");
-    private static final Long SLEEP_DURATION = Long.parseLong(properties.getProperty("SLEEP_DURATION"));
-    private static final boolean SLEEP_ENABLED = Boolean.parseBoolean(properties.getProperty("SLEEP_ENABLED"));
 
     private static final String PAGE_SIZE = "50";
 
     public void run(List<String> filterIds) {
+        final long SLEEP_DURATION = Long.parseLong(properties.getProperty(PropertyEnums.SLEEP_DURATION.getValue()));
         try {
             // add filter ids to list
             filterIds.parallelStream().forEach(this::getAllTicketKeys);
             Thread.sleep(SLEEP_DURATION * 3);
             solveTickets();
         } catch (Exception e) {
+            Thread.currentThread().interrupt();
             e.printStackTrace();
         }
     }
@@ -77,6 +78,10 @@ public class Runner {
      * Solve tickets from stored file with given request body
      */
     private void solveTickets() {
+        final String REQUEST_BODY = properties.getProperty(PropertyEnums.REQUEST_BODY.getValue());
+        final long SLEEP_DURATION = Long.parseLong(properties.getProperty(PropertyEnums.SLEEP_DURATION.getValue()));
+        final boolean SLEEP_ENABLED = Boolean.parseBoolean(properties.getProperty(PropertyEnums.SLEEP_ENABLED.getValue()));
+
         // get all ticket keys from stored file
         List<String> ticketKeys = Collections.synchronizedList(new ArrayList<>(FileUtils.getTicketKeys()));
         Logger.info("[INFO] Total ticket size: {}", ticketKeys.size());
@@ -100,6 +105,7 @@ public class Runner {
                 try {
                     Thread.sleep(SLEEP_DURATION);
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     throw new RuntimeException(e);
                 }
             }
