@@ -15,9 +15,6 @@ import java.net.http.HttpResponse;
 public class HttpRequestUtils {
 
     private static final PropertyAccessor properties = PropertyAccessor.getInstance();
-    private static final String API_URL = properties.getProperty("API_URL");
-    private static final String TENANT_ID = properties.getProperty("TENANT_ID");
-    private static final String ACCESS_TOKEN = properties.getProperty("ACCESS_TOKEN");
 
     private HttpRequestUtils() {
         throw new IllegalStateException("Utility class");
@@ -32,6 +29,10 @@ public class HttpRequestUtils {
      * @return {@link KeysDto}
      */
     public static KeysDto getTicketsRequest(String filterId, String pageSize, int pageIndex) throws URISyntaxException {
+        final String API_URL = properties.getProperty(PropertyEnums.API_URL.getValue());
+        final String TENANT_ID = properties.getProperty(PropertyEnums.TENANT_ID.getValue());
+        final String ACCESS_TOKEN = properties.getProperty(PropertyEnums.ACCESS_TOKEN.getValue());
+
         URI uri;
         try {
             uri = new URI("%s/filters/%s?size=%s&page=%s".formatted(API_URL, filterId, pageSize, pageIndex));
@@ -60,6 +61,7 @@ public class HttpRequestUtils {
             return JsonUtils.parseContent(response.body());
 
         } catch (IOException | InterruptedException e) {
+            Thread.currentThread().interrupt();
             e.printStackTrace();
         }
         return null;
@@ -72,6 +74,10 @@ public class HttpRequestUtils {
      * @param requestBody request body
      */
     public static void sendTicketRequest(String ticketKey, String requestBody) {
+        final String API_URL = properties.getProperty(PropertyEnums.API_URL.getValue());
+        final String TENANT_ID = properties.getProperty(PropertyEnums.TENANT_ID.getValue());
+        final String ACCESS_TOKEN = properties.getProperty(PropertyEnums.ACCESS_TOKEN.getValue());
+
         URI uri;
         try {
             uri = new URI("%s/tickets/%s".formatted(API_URL, ticketKey));
@@ -102,7 +108,47 @@ public class HttpRequestUtils {
 
         } catch (IOException | InterruptedException e) {
             Logger.error("Error: {} {} key is {}", e.getMessage(), e, ticketKey);
+            Thread.currentThread().interrupt();
             e.printStackTrace();
         }
+    }
+
+    public static String login(String tenantId, String username, String password) throws URISyntaxException {
+        final String API_URL = properties.getProperty(PropertyEnums.API_URL.getValue());
+
+        URI uri;
+        try {
+            uri = new URI("%s/login".formatted(API_URL));
+        } catch (URISyntaxException e) {
+            Logger.error("Error when parsing url {} {}", e.getMessage(), e);
+            throw new URISyntaxException("[ERR]", e.getReason());
+        }
+
+        final HttpClient client = HttpClient.newHttpClient();
+        final String requestBody = "{\"username\":\"%s\",\"password\":\"%s\"}".formatted(username, password);
+        var request = HttpRequest
+                .newBuilder()
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .uri(uri)
+                .header("tenantId", tenantId)
+                .header("Content-Type", "application/json")
+                .timeout(java.time.Duration.ofSeconds(10))
+                .build();
+
+        try {
+            var response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                Logger.error("Error when logging {} {}", response.statusCode(), response.body());
+            }
+
+            return JsonUtils.parseToken(response.body());
+
+        } catch (IOException | InterruptedException e) {
+            Logger.error("Error when logging {} {}", e.getMessage(), e);
+            Thread.currentThread().interrupt();
+            e.printStackTrace();
+        }
+        return null;
     }
 }

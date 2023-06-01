@@ -11,7 +11,6 @@ public class JsonUtils {
     public static final Long SOLVED_ID = 4L;
     public static final Long CLOSED_ID = 5L;
     static final PropertyAccessor properties = PropertyAccessor.getInstance();
-    private static final String SEPARATOR = properties.getProperty("SEPARATOR");
 
     private JsonUtils() {
         throw new IllegalStateException("Utility class");
@@ -24,6 +23,7 @@ public class JsonUtils {
      * @return ticket keys as {@link KeysDto}
      */
     public static KeysDto parseContent(String json) {
+        final String SEPARATOR = properties.getProperty(PropertyEnums.SEPARATOR.getValue());
         final StringBuilder sb = new StringBuilder();
         final JSONObject jsonObject = new JSONObject(json);
         final JSONArray contentArray = jsonObject.getJSONArray("content");
@@ -47,5 +47,10 @@ public class JsonUtils {
         });
 
         return new KeysDto(sb.toString(), hasNextPage);
+    }
+
+    public static String parseToken(String json) {
+        final JSONObject jsonObject = new JSONObject(json);
+        return jsonObject.getString("access_token");
     }
 }
