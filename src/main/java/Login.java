@@ -24,6 +24,12 @@ public class Login {
             final String credentials = scanner.next();
 
             final String[] credentialsArray = credentials.split(AUTH_SEPARATOR);
+
+            if (credentialsArray.length != 3) {
+                Logger.error("Invalid credentials");
+                System.exit(1);
+            }
+
             final String tenantId = credentialsArray[0];
             final String username = credentialsArray[1];
             final String password = credentialsArray[2];
