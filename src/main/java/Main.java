@@ -26,7 +26,7 @@ public class Main {
             Logger.info("Enter filter ids:");
 
             final String line = scanner.nextLine();
-            final List<String> filterIds = FileUtils.splitTicketKeys(line);
+            final List<String> filterIds = FileUtils.splitFilterKeys(line);
 
             final Runner runner = new Runner();
             runner.run(filterIds);
