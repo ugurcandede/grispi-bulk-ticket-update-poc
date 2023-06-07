@@ -15,7 +15,7 @@ public class Login {
     private Login() {
     }
 
-    public static void login() {
+    public static void customLogin() {
         try {
             final String AUTH_SEPARATOR = properties.getProperty(PropertyEnums.AUTH_SEPARATOR.getValue());
 
@@ -57,6 +57,36 @@ public class Login {
 
             properties.setProperties(PropertyEnums.ACCESS_TOKEN.getValue(), token);
             properties.setProperties(PropertyEnums.TENANT_ID.getValue(), tenantId);
+        } catch (NoSuchElementException e) {
+            Logger.warn("Application interrupted");
+        } catch (Exception e) {
+            Logger.error(e);
+        }
+    }
+
+    public static void tokenLogin() {
+        try {
+            final Scanner scanner = new Scanner(System.in);
+
+            Logger.info("Enter tenantId:");
+            final String tenantId = scanner.next();
+
+            Logger.info("Enter token:");
+            final String token = scanner.next();
+
+            Logger.info("You entered\nTenantId: {}\nToken: {}", tenantId, token);
+
+            Logger.info("Are you sure? (y/n)");
+            final String confirmation = scanner.next();
+
+            if (!confirmation.equals("y")) {
+                Logger.info("Application finished");
+                System.exit(0);
+            }
+
+            Logger.info("Credentials stored");
+            properties.setProperties(PropertyEnums.TENANT_ID.getValue(), tenantId);
+            properties.setProperties(PropertyEnums.ACCESS_TOKEN.getValue(), token);
         } catch (NoSuchElementException e) {
             Logger.warn("Application interrupted");
         } catch (Exception e) {
