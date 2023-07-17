@@ -29,6 +29,10 @@ public class PropertyAccessor {
         return properties.getProperty(key);
     }
 
+    public void setProperties(String key, String value) {
+        properties.setProperty(key, value);
+    }
+
     public Set<String> getAllPropertyNames() {
         return properties.stringPropertyNames();
     }

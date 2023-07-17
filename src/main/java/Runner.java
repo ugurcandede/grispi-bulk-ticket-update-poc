@@ -2,7 +2,9 @@ import org.tinylog.Logger;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -14,19 +16,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Runner {
 
     private static final PropertyAccessor properties = PropertyAccessor.getInstance();
-    private static final String REQUEST_BODY = properties.getProperty("REQUEST_BODY");
-    private static final Long SLEEP_DURATION = Long.parseLong(properties.getProperty("SLEEP_DURATION"));
-    private static final boolean SLEEP_ENABLED = Boolean.parseBoolean(properties.getProperty("SLEEP_ENABLED"));
 
     private static final String PAGE_SIZE = "50";
 
     public void run(List<String> filterIds) {
+        final long SLEEP_DURATION = Long.parseLong(properties.getProperty(PropertyEnums.SLEEP_DURATION.getValue()));
         try {
             // add filter ids to list
             filterIds.parallelStream().forEach(this::getAllTicketKeys);
             Thread.sleep(SLEEP_DURATION * 3);
             solveTickets();
         } catch (Exception e) {
+            Thread.currentThread().interrupt();
             e.printStackTrace();
         }
     }
@@ -50,22 +51,23 @@ public class Runner {
             }
 
             assert keysDto != null;
-            final String keys = keysDto.keys();
+            final String keysWithAssignee = keysDto.keysWithAssignee();
+            final String keysWithoutAssignee = keysDto.keysWithoutAssignee();
             hasNextPage = keysDto.hasNextPage();
 
             // store ticket keys
             try {
-                FileUtils.storeTicketKeys(keys);
+                FileUtils.storeTicketKeys(keysWithAssignee, true);
+                FileUtils.storeTicketKeys(keysWithoutAssignee, false);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
 
-            // increase ticket count
-            final List<String> ticketKeys = FileUtils.splitTicketKeys(keys);
+            final List<String> ticketKeys = FileUtils.splitTicketKeys(keysWithAssignee, keysWithoutAssignee);
             ticketCounter.addAndGet(ticketKeys.size());
 
             Logger.info("[FETCH] Page index: {} and filterId is '{}'", pageIndex, filterId);
-            pageIndex++;
+            if (hasNextPage) pageIndex++;
         }
 
         // store ticket count with filterId
@@ -77,15 +79,26 @@ public class Runner {
      * Solve tickets from stored file with given request body
      */
     private void solveTickets() {
-        // get all ticket keys from stored file
-        List<String> ticketKeys = Collections.synchronizedList(new ArrayList<>(FileUtils.getTicketKeys()));
-        Logger.info("[INFO] Total ticket size: {}", ticketKeys.size());
+        final String REQUEST_BODY_WITH_ASSIGNEE = properties.getProperty(PropertyEnums.REQUEST_BODY_WITH_ASSIGNEE.getValue());
+        final String REQUEST_BODY_WITHOUT_ASSIGNEE = properties.getProperty(PropertyEnums.REQUEST_BODY_WITHOUT_ASSIGNEE.getValue());
 
-        // delete stored tickets file
-        FileUtils.deleteStoredTicketsFile();
+        // get all ticket keys from stored file
+        closeTicketAssignee(true, REQUEST_BODY_WITH_ASSIGNEE);
+        sleeper();
+        closeTicketAssignee(false, REQUEST_BODY_WITHOUT_ASSIGNEE);
+
+        // delete stored files
+        FileUtils.deleteStoredFiles();
+        Logger.info("[INFO] All tickets are solved");
+    }
+
+    private void closeTicketAssignee(boolean isWithAssignee, String requestBody) {
+
+        final List<String> ticketKeys = Collections.synchronizedList(new ArrayList<>(FileUtils.getTicketKeys(isWithAssignee)));
+        Logger.info("[INFO] Total ticket {} size: {}", isWithAssignee ? "with assignee" : "without assignee", ticketKeys.size());
 
         // divide ticket keys into blocks
-        List<List<String>> blocks = new ArrayList<>();
+        final List<List<String>> blocks = new ArrayList<>();
         int blockSize = 20;
         for (int i = 0; i < ticketKeys.size(); i += blockSize) {
             int end = Math.min(ticketKeys.size(), i + blockSize);
@@ -96,13 +109,7 @@ public class Runner {
         blocks.stream().parallel().forEach(block -> {
             final CopyOnWriteArrayList<String> writeArrayList = new CopyOnWriteArrayList<>(block);
 
-            if (SLEEP_ENABLED) {
-                try {
-                    Thread.sleep(SLEEP_DURATION);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
+            sleeper();
 
             // solve each ticket in block
             writeArrayList.forEach(ticketKey -> {
@@ -112,7 +119,7 @@ public class Runner {
                         return;
                     }
 
-                    HttpRequestUtils.sendTicketRequest(ticketKey, REQUEST_BODY);
+                    HttpRequestUtils.sendTicketRequest(ticketKey, requestBody);
                     writeArrayList.remove(ticketKey);
 
                     Logger.info("[SOLVE] Solved ticket with key: {}", ticketKey);
@@ -121,6 +128,18 @@ public class Runner {
                 }
             });
         });
-        Logger.info("[INFO] All tickets are solved");
+    }
+
+    private void sleeper() {
+        final long SLEEP_DURATION = Long.parseLong(properties.getProperty(PropertyEnums.SLEEP_DURATION.getValue()));
+        final boolean SLEEP_ENABLED = Boolean.parseBoolean(properties.getProperty(PropertyEnums.SLEEP_ENABLED.getValue()));
+        if (SLEEP_ENABLED) {
+            try {
+                Thread.sleep(SLEEP_DURATION);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
+        }
     }
 }

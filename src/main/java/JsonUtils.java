@@ -11,7 +11,6 @@ public class JsonUtils {
     public static final Long SOLVED_ID = 4L;
     public static final Long CLOSED_ID = 5L;
     static final PropertyAccessor properties = PropertyAccessor.getInstance();
-    private static final String SEPARATOR = properties.getProperty("SEPARATOR");
 
     private JsonUtils() {
         throw new IllegalStateException("Utility class");
@@ -24,7 +23,9 @@ public class JsonUtils {
      * @return ticket keys as {@link KeysDto}
      */
     public static KeysDto parseContent(String json) {
-        final StringBuilder sb = new StringBuilder();
+        final String SEPARATOR = properties.getProperty(PropertyEnums.SEPARATOR.getValue());
+        final StringBuilder sbWoAssignee = new StringBuilder();
+        final StringBuilder sbWAssignee = new StringBuilder();
         final JSONObject jsonObject = new JSONObject(json);
         final JSONArray contentArray = jsonObject.getJSONArray("content");
 
@@ -41,11 +42,23 @@ public class JsonUtils {
                 return;
             }
 
-            String key = itemObject.getString("key");
-            sb.append(key);
-            sb.append(SEPARATOR);
+            final boolean assigneeIsNull = itemObject.isNull("assignee");
+            final String key = itemObject.getString("key");
+
+            if (assigneeIsNull) {
+                sbWoAssignee.append(key);
+                sbWoAssignee.append(SEPARATOR);
+            } else {
+                sbWAssignee.append(key);
+                sbWAssignee.append(SEPARATOR);
+            }
         });
 
-        return new KeysDto(sb.toString(), hasNextPage);
+        return new KeysDto(sbWAssignee.toString(), sbWoAssignee.toString(), hasNextPage);
+    }
+
+    public static String parseToken(String json) {
+        final JSONObject jsonObject = new JSONObject(json);
+        return jsonObject.getString("access_token");
     }
 }

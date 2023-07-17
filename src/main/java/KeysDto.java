@@ -3,6 +3,6 @@
  *
  * @author ugurcandede
  */
-public record KeysDto(String keys, boolean hasNextPage) {
+public record KeysDto(String keysWithAssignee, String keysWithoutAssignee, boolean hasNextPage) {
 
 }
